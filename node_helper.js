@@ -52,7 +52,7 @@ const GO2RTC_CFG = {
   },
   webrtc: {
     listen: `:${webrtcPort}`,
-    candidates: ["stun:8555"]
+    candidates: [`stun:${webrtcPort}`]
   },
   streams: {}
 };
