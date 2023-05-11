@@ -17,7 +17,10 @@ const go2rtc = require("go2rtc-static");
 const ffmpeg = require("@ffmpeg-installer/ffmpeg").path;
 const configPath = path.join(__dirname, "go2rtc.yaml");
 const pidPath = path.join(__dirname, "go2rtc.pid");
-const apiPort = process.env.API_PORT || 1984;
+const apiPort = process.env.API_PORT || 2984;
+const rtspPort = process.env.RTSP_PORT || 9554;
+const srtpPort = process.env.SRTP_PORT || 9443;
+const webrtcPort = process.env.WEBRTC_PORT || 10555;
 
 const GO2RTC_CFG = {
   api: {
@@ -40,10 +43,15 @@ const GO2RTC_CFG = {
   log: {
     format: "text"
   },
+  srtp: {
+    listen: ""
+  },
   rtsp: {
+    listen: `:${rtspPort}`,
     default_query: "video"
   },
   webrtc: {
+    listen: `:${webrtcPort}`,
     candidates: ["stun:8555"]
   },
   streams: {}
