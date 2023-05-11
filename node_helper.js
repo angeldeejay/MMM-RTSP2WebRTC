@@ -44,7 +44,7 @@ const GO2RTC_CFG = {
     format: "text"
   },
   srtp: {
-    listen: `${srtpPort}`
+    listen: `:${srtpPort}`
   },
   rtsp: {
     listen: `:${rtspPort}`,
