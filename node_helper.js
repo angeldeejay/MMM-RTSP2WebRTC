@@ -8,7 +8,6 @@
  */
 
 const { ChildProcess, spawnSync, execFile } = require("node:child_process");
-const axios = require("axios");
 const fs = require("fs");
 const Log = require("logger");
 const NodeHelper = require("node_helper");
@@ -18,7 +17,7 @@ const go2rtc = require("go2rtc-static");
 const ffmpeg = require("@ffmpeg-installer/ffmpeg").path;
 const configPath = path.join(__dirname, "go2rtc.yaml");
 const pidPath = path.join(__dirname, "go2rtc.pid");
-const apiPort = 1984;
+const apiPort = process.env.API_PORT || 1984;
 
 const GO2RTC_CFG = {
   api: {
@@ -52,15 +51,12 @@ const GO2RTC_CFG = {
 
 module.exports = NodeHelper.create({
   name: path.basename(__dirname),
-  apiClient: null,
   apiConnector: null,
-  apiPort: null,
   busy: false,
   logPrefix: null,
   go2rtcAlive: false,
   streamProcess: null,
   sources: [],
-  baseUrl: process.env.LOCAL_IP || null,
 
   bootstrap() {
     this.sendNotification("SET_MESSAGE", "LOADING_VIDEO");
@@ -74,10 +70,6 @@ module.exports = NodeHelper.create({
     this.logPrefix = `${this.name} :: `;
     this.config = null;
     this.go2rtcAlive = false;
-    this.apiClient = axios.create({
-      baseURL: `http://127.0.0.1:${apiPort}`
-    });
-    this.proxyReady = false;
     this.bootstrap();
   },
 
@@ -198,28 +190,15 @@ module.exports = NodeHelper.create({
   },
 
   sendActiveSources() {
-    const currentSources = this.sources.map((v) => v.key);
+    const currentSources = this.sources.map(({ key, rawSource: source }) => ({
+      key,
+      source,
+      endpoint: `http://${
+        process.env.LOCAL_IP ?? this.config.exposedIp ?? "127.0.0.1"
+      }:${process.env.API_PORT ?? apiPort}/api/ws?src=${key}`
+    }));
 
-    this.apiClient
-      .get("/api/streams")
-      .catch((..._) => setTimeout(() => this.sendActiveSources(), 1000))
-      .then((response) => {
-        return (response && response.data) || {};
-      })
-      .then((payloadSources) => {
-        this.sendNotification(
-          "UPDATE_SOURCES",
-          Object.entries(payloadSources)
-            .filter(([k, _]) => currentSources.includes(k))
-            .map(([k, s]) => ({
-              key: k,
-              source: s.producers[0].url,
-              endpoint: `http://${
-                this.config.baseUrl ?? process.env.LOCAL_IP ?? "127.0.0.1"
-              }:${apiPort}/api/ws?src=${k}`
-            }))
-        );
-      });
+    this.sendNotification("UPDATE_SOURCES", currentSources);
   },
 
   sendNotification(notification, payload) {

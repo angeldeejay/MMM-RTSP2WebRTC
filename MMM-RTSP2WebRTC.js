@@ -22,7 +22,8 @@ Module.register("MMM-RTSP2WebRTC", {
     width: 700,
     animationSpeed: 500,
     liveTolerance: 2,
-    baseUrl: null,
+    exposedIp: null,
+    exposedApiPort: null,
     sources: []
   },
   name: "MMM-RTSP2WebRTC",
