@@ -51,8 +51,7 @@ const GO2RTC_CFG = {
     default_query: "video"
   },
   webrtc: {
-    listen: `:${webrtcPort}`,
-    candidates: [`stun:${webrtcPort}`]
+    listen: `:${webrtcPort}`
   },
   streams: {}
 };
