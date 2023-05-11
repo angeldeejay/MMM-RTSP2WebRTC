@@ -52,10 +52,7 @@ const GO2RTC_CFG = {
   },
   webrtc: {
     listen: `:${webrtcPort}`,
-    candidates: [
-      `stun:${webrtcPort}`,
-      `${process.env.LOCAL_IP ?? "127.0.0.1"}:${webrtcPort}`
-    ]
+    candidates: [`${process.env.LOCAL_IP ?? "stun"}:${webrtcPort}`]
   },
   streams: {}
 };
