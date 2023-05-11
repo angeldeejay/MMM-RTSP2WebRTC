@@ -1,0 +1,35 @@
+.MMM-RTSP2WebRTC .wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.MMM-RTSP2WebRTC .wrapper > .message-container,
+.MMM-RTSP2WebRTC .wrapper > .player {
+  display: flex;
+  border: 1px solid var(--color-text-dimmed);
+  border-radius: 0.25rem;
+  background-color: rgba(0, 0, 0, 0.875);
+  overflow: hidden;
+}
+
+.MMM-RTSP2WebRTC .wrapper > *:not(:first-child) {
+  margin-top: 0.5rem !important;
+}
+
+.MMM-RTSP2WebRTC .wrapper > .message-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.MMM-RTSP2WebRTC .wrapper > .message-container > .icon {
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
+}
+
+.MMM-RTSP2WebRTC .wrapper > .player {
+  padding-top: 0 !important;
+  opacity: 0.9;
+}
