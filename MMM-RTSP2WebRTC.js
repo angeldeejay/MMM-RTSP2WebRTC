@@ -42,11 +42,6 @@ Module.register("MMM-RTSP2WebRTC", {
       ...this.defaults,
       ...this.config
     };
-    videojs.log.levels = {
-      ...videojs.log.levels,
-      log: "log"
-    };
-    videojs.log.level("log");
 
     this.sourcesOrder = {};
     this.sources = {};

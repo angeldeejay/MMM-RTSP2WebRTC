@@ -2,7 +2,7 @@
 
 This is a module for the [MagicMirror²](https://github.com/MichMich/MagicMirror/).
 
-This module serve [mediamtx](https://github.com/aler9/mediamtx) instance and proxy multiple RTSP feeds to be inserted in MagicMirror through [Video.js](https://github.com/videojs/video.js) and [videojs-http-streaming (VHS)](https://github.com/videojs/http-streaming) to be used even within browsers not supporting video tags.
+This module serve [go2rtc](https://github.com/AlexxIT/go2rtc) instance and proxy multiple RTSP feeds to be inserted in MagicMirror through WebRTC.
 
 ## Example
 
@@ -34,7 +34,7 @@ var config = {
 ## Configuration options
 
 | Option           | Default     | Description                                                                              |
-| ---------------- | ----------- | ---------------------------------------------------------------------------------------- |
+|------------------|-------------|------------------------------------------------------------------------------------------|
 | `updateInterval` | `30000`     | _Optional_ Default time to show next camera (in milliseconds)                            |
 | `retryDelay`     | `5000`      | _Optional_ Time to wait to refresh DOM when server and feeds are alive (in milliseconds) |
 | `controls`       | `false`     | _Optional_ If video player should show its controls                                      |
