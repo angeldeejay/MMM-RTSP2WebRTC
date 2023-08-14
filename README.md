@@ -33,13 +33,13 @@ var config = {
 
 ## Configuration options
 
-| Option           | Default     | Description                                                                              |
-|------------------|-------------|------------------------------------------------------------------------------------------|
-| `updateInterval` | `30000`     | _Optional_ Default time to show next camera (in milliseconds)                            |
-| `retryDelay`     | `5000`      | _Optional_ Time to wait to refresh DOM when server and feeds are alive (in milliseconds) |
-| `controls`       | `false`     | _Optional_ If video player should show its controls                                      |
-| `height`         | `350`       | _Optional_ video player height                                                           |
-| `width`          | `700`       | _Optional_ video player width                                                            |
-| `animationSpeed` | `400`       | _Optional_ Animation speed to update DOM                                                 |
-| `baseUrl`        | `127.0.0.1` | _Optional_ Websockets base URL                                                           |
-| `sources`        | `[]`        | _Required_ sources list (rtsp urls to proxy. e.g rtsp://x.x.x.x:8554/live)               |
+| Option           | Default     | Description                                                    |
+|------------------|-------------|----------------------------------------------------------------|
+| `controls`       | `false`     | _Optional_ If video player should show its controls            |
+| `height`         | `350`       | _Optional_ video player height                                 |
+| `width`          | `700`       | _Optional_ video player width                                  |
+| `animationSpeed` | `0`         | _Optional_ Animation speed to update DOM                       |
+| `liveTolerance`  | `3`         | _Optional_ Frames tolerance in seconds                         |
+| `host`           | `localhost` | _Optional_ Frigate host                                        |
+| `port`           | `5000`      | _Optional_ Frigate port                                        |
+| `sources`        | `[]`        | _Required_ sources list (Frigate camera names, e.g. `bedroom`) |

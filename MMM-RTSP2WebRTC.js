@@ -20,10 +20,10 @@ Module.register("MMM-RTSP2WebRTC", {
     controls: false,
     height: 350,
     width: 700,
-    animationSpeed: 500,
-    liveTolerance: 2,
-    exposedIp: null,
-    exposedApiPort: null,
+    animationSpeed: 0,
+    liveTolerance: 3,
+    host: "localhost",
+    port: 5000,
     sources: []
   },
   name: "MMM-RTSP2WebRTC",
@@ -32,7 +32,6 @@ Module.register("MMM-RTSP2WebRTC", {
   // Placeholders
   wrapper: null,
   sources: {},
-  readyState: false,
   configValid: false,
   sourcesOrder: {},
 
@@ -47,70 +46,70 @@ Module.register("MMM-RTSP2WebRTC", {
     this.sources = {};
     this.configValid =
       Object.prototype.hasOwnProperty.call(this.config, "sources") &&
-      Array.isArray(this.config.sources);
+      Array.isArray(this.config.sources) &&
+      Object.prototype.hasOwnProperty.call(this.config, "host") &&
+      typeof this.config.host === "string" &&
+      this.config.host.trim().length > 0 &&
+      Object.prototype.hasOwnProperty.call(this.config, "port") &&
+      typeof this.config.port === "number" &&
+      this.config.port > 0;
 
     if (!this.configValid) {
-      this.warning(`Invalid value for sources:`, this.config.sources);
-      this.config.sources = [];
-    } else {
-      // Set unique values
-      this.config.sources = this.config.sources
-        .map((s, i) => {
-          return {
-            name:
-              typeof s === "string"
-                ? `${this.translate("VIDEO")} ${i + 1}`
-                : s.name ?? `${this.translate("VIDEO")} ${i + 1}`,
-            rawSource: typeof s === "string" ? s : s.source ?? null
-          };
-        })
-        .filter((s) => {
-          const valid =
-            Object.prototype.hasOwnProperty.call(s, "rawSource") &&
-            s.rawSource !== null &&
-            `${s.rawSource}`.trim().length !== 0;
-          if (!valid)
-            this.warning(
-              `Discarding invalid source: ${JSON.stringify(s, null, 2)}`
-            );
-          return valid;
-        })
-        .filter((s, i, self) => self.indexOf(s) === i)
-        .map((s, i) => {
-          return { id: i, ...s };
-        });
-
-      this.sources = this.config.sources.reduce(
-        (acc, { id, name, rawSource: source }) => {
-          const keyPrefix = name
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .replace(/[^a-z0-9]+/gim, "_");
-          const key = `${keyPrefix}_${MD5(source)}`;
-          acc[key] = {
-            id,
-            key,
-            name,
-            source,
-            endpoint: null,
-            intervalId: null,
-            player: null,
-            videoEl: this.getVideoElement(key),
-            messageEl: this.getMessageElement(key)
-          };
-          return acc;
-        },
-        {}
-      );
-      this.sourcesOrder = Object.fromEntries(
-        Object.entries(this.sources)
-          .sort((a, b) => a[1].id - b[1].id)
-          .map(([k, s]) => [k, s.id])
-      );
+      this.warning(`Invalid config:`, this.config);
+      throw new Error(`Invalid config`);
     }
 
     this.getWrapper();
+
+    // Set unique values
+    this.config.sources = this.config.sources
+      .map((s, i) => {
+        return {
+          name:
+            typeof s === "string"
+              ? `${this.translate("VIDEO")} ${i + 1}`
+              : s.name ?? `${this.translate("VIDEO")} ${i + 1}`,
+          key: typeof s === "string" ? s : s.key ?? null
+        };
+      })
+      .filter((s) => {
+        const valid =
+          Object.prototype.hasOwnProperty.call(s, "key") &&
+          s.key !== null &&
+          `${s.key}`.trim().length !== 0;
+        if (!valid)
+          this.warning(`Discarding invalid key: ${JSON.stringify(s, null, 2)}`);
+        return valid;
+      })
+      .filter((s, i, self) => self.indexOf(s) === i)
+      .map((s, i) => {
+        return { id: i, ...s };
+      });
+
+    this.sources = this.config.sources.reduce((acc, { id, name, key }) => {
+      const endpoint = `ws://${this.config.host}:${this.config.port}/live/webrtc/api/ws?src=${key}`;
+      acc[key] = {
+        id,
+        key,
+        name,
+        endpoint,
+        intervalId: null,
+        player: null,
+        videoEl: this.getVideoElement(key),
+        messageEl: this.getMessageElement(key)
+      };
+      return acc;
+    }, {});
+    this.sourcesOrder = Object.fromEntries(
+      Object.entries(this.sources)
+        .sort((a, b) => a[1].id - b[1].id)
+        .map(([k, s]) => [k, s.id])
+    );
+
     this.generateUi();
+    for (const key of Object.keys(this.sources)) {
+      this.showPlayer(key);
+    }
     this.log("Started");
   },
 
@@ -128,7 +127,7 @@ Module.register("MMM-RTSP2WebRTC", {
     Log.error(`${this.logPrefix}${msg}`, ...args);
   },
   warning(msg, ...args) {
-    Log.warning(`${this.logPrefix}${msg}`, ...args);
+    Log.warn(`${this.logPrefix}${msg}`, ...args);
   },
 
   destroyAllPlayers() {
@@ -273,7 +272,7 @@ Module.register("MMM-RTSP2WebRTC", {
       this.sources[key].videoEl.offsetParent !== null
     )
       return;
-    this.debug(
+    this.info(
       `Creating player: ${this.sources[key].name} → ${this.sources[key].endpoint}`
     );
     const shownMessage = this.wrapper.querySelector(
@@ -310,97 +309,18 @@ Module.register("MMM-RTSP2WebRTC", {
     }
   },
 
-  updateSources(payloadSources) {
-    if (payloadSources.length <= 0) return;
-
-    const payloadKeys = payloadSources.map((s) => s.key).sort();
-    const currentKeys = Object.values(this.sources)
-      .filter((s) => s.player !== null)
-      .map((s) => s.key)
-      .sort();
-    const newSources = payloadSources.filter(
-      (x) => !currentKeys.includes(x.key)
-    );
-    const removedSources = Object.values(this.sources).filter(
-      (x) => !payloadKeys.includes(x.key)
-    );
-    if (removedSources.length + newSources.length > 0) {
-      removedSources.forEach((s) => {
-        this.destroySource(s);
-      });
-      newSources.forEach(({ key, endpoint }, i) => {
-        if (i === 0) this.hideMessage("none");
-        this.sources[key].endpoint = endpoint;
-        this.showPlayer(key);
-      });
-      if (removedSources.length > 0)
-        this.debug(`${removedSources.length} sources removed`);
-      if (newSources.length > 0)
-        this.debug(`${newSources.length} sources added`);
-    }
-  },
-
   refresh: function () {
     window.location.reload(true);
   },
 
   generateUi: function () {
     const sourcesCount = Object.keys(this.sources).length;
-    if (sourcesCount === 0 || !this.readyState) {
+    if (sourcesCount === 0) {
       this.showMessages(sourcesCount === 0 ? "NO_SOURCES" : "LOADING_VIDEO");
       return;
     }
 
     setTimeout(() => this.generateUi(), 1000);
-  },
-
-  syncConfig: function () {
-    this._sendNotification("SET_CONFIG", {
-      ...this.config,
-      sources: Object.values(this.sources).map(({ key, source }) => {
-        return {
-          key,
-          source
-        };
-      })
-    });
-  },
-
-  /**
-   * Notification send helper method
-   * @param {string} notification notification type
-   * @param {any} payload notification payload
-   */
-  _sendNotification(notification, payload) {
-    this.sendSocketNotification(`${this.name}-${notification}`, payload);
-  },
-
-  notificationReceived(notification, payload) {
-    switch (notification) {
-      case "MODULE_DOM_CREATED":
-        if (this.configValid) setInterval(() => this.syncConfig(), 1000);
-        break;
-      default:
-    }
-  },
-
-  // Override socket notification received method
-  socketNotificationReceived(notification, payload) {
-    const self = this;
-    switch (notification.replace(`${this.name}-`, "")) {
-      case "RELOAD":
-        this.info("Reloading...");
-        this.refresh();
-        break;
-      case "WAIT_CONFIG":
-        break;
-      case "UPDATE_SOURCES":
-        this.updateSources(payload);
-      case "READY":
-        this.readyState = payload;
-        break;
-      default:
-    }
   },
 
   // Override function to retrieve DOM elements
@@ -410,10 +330,7 @@ Module.register("MMM-RTSP2WebRTC", {
 
   // Load scripts
   getScripts() {
-    return [
-      this.file("node_modules/md5/dist/md5.min.js"),
-      this.file("js/video-rtc.js")
-    ];
+    return [this.file("js/video-rtc.js")];
   },
 
   // Load stylesheets

@@ -1,6 +1,6 @@
 {
   "name": "MMM-RTSP2WebRTC",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Proxy sources through go2rtc",
   "main": "MMM-RTSP2WebRTC.js",
   "author": "Andrés Vanegas <ukab72106@gmail.com>",
@@ -17,11 +17,6 @@
     "test": "npm run lint"
   },
   "dependencies": {
-    "@ffmpeg-installer/ffmpeg": "^1.1.0",
-    "@fortawesome/fontawesome-free": "^6.4.0",
-    "go2rtc-static": "^1.5.0",
-    "js-yaml": "^4.1.0",
-    "md5": "^2.3.0",
-    "mediamtx-installer": "^1.0.1"
+    "@fortawesome/fontawesome-free": "^6.4.0"
   }
 }
