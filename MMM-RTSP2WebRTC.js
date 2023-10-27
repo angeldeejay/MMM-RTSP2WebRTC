@@ -34,6 +34,8 @@ Module.register("MMM-RTSP2WebRTC", {
   sources: {},
   configValid: false,
   sourcesOrder: {},
+  isTV: null,
+  playMode: null,
 
   // Overrides start method
   start() {
@@ -41,6 +43,9 @@ Module.register("MMM-RTSP2WebRTC", {
       ...this.defaults,
       ...this.config
     };
+
+    this.isTV = webOS.platform.tv === true;
+    this.playMode = this.isTV ? "mjpeg" : "webrtc";
 
     this.sourcesOrder = {};
     this.sources = {};
@@ -87,7 +92,7 @@ Module.register("MMM-RTSP2WebRTC", {
       });
 
     this.sources = this.config.sources.reduce((acc, { id, name, key }) => {
-      const endpoint = `ws://${this.config.host}:${this.config.port}/live/webrtc/api/ws?src=${key}`;
+      const endpoint = `ws://${this.config.host}:${this.config.port}/live/${this.playMode}/api/ws?src=${key}`;
       acc[key] = {
         id,
         key,
@@ -153,7 +158,7 @@ Module.register("MMM-RTSP2WebRTC", {
       `player-${this.name}`,
       `player-${key}`
     );
-    videoWrapper.mode = "webrtc";
+    videoWrapper.mode = this.playMode;
     videoWrapper.style.width = `${this.config.width}px`;
     videoWrapper.style.height = `${this.config.height}px`;
 
@@ -330,7 +335,7 @@ Module.register("MMM-RTSP2WebRTC", {
 
   // Load scripts
   getScripts() {
-    return [this.file("js/video-rtc.js")];
+    return [this.file("js/video-rtc.js"), this.file("js/webOSTV.js")];
   },
 
   // Load stylesheets
