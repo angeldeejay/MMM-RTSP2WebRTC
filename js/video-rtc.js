@@ -27,8 +27,7 @@ class VideoRTC extends HTMLElement {
       "hvc1.1.6.L153.B0", // H.265 main 5.1 (Chromecast Ultra)
       "mp4a.40.2", // AAC LC
       "mp4a.40.5", // AAC HE
-      "flac", // FLAC (PCM compatible)
-      "opus" // OPUS Chrome, Firefox
+      "opus" // OPUS Chrome
     ];
 
     /**

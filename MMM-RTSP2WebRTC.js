@@ -34,8 +34,6 @@ Module.register("MMM-RTSP2WebRTC", {
   sources: {},
   configValid: false,
   sourcesOrder: {},
-  isTV: null,
-  playMode: null,
 
   // Overrides start method
   start() {
@@ -43,9 +41,6 @@ Module.register("MMM-RTSP2WebRTC", {
       ...this.defaults,
       ...this.config
     };
-
-    this.isTV = webOS.platform.tv === true;
-    this.playMode = this.isTV ? "mjpeg" : "webrtc";
 
     this.sourcesOrder = {};
     this.sources = {};
@@ -92,7 +87,7 @@ Module.register("MMM-RTSP2WebRTC", {
       });
 
     this.sources = this.config.sources.reduce((acc, { id, name, key }) => {
-      const endpoint = `ws://${this.config.host}:${this.config.port}/live/${this.playMode}/api/ws?src=${key}`;
+      const endpoint = `ws://${this.config.host}:${this.config.port}/live/webrtc/api/ws?src=${key}`;
       acc[key] = {
         id,
         key,
@@ -100,7 +95,7 @@ Module.register("MMM-RTSP2WebRTC", {
         endpoint,
         intervalId: null,
         player: null,
-        videoEl: this.getVideoElement(key),
+        videoEl: null,
         messageEl: this.getMessageElement(key)
       };
       return acc;
@@ -112,9 +107,12 @@ Module.register("MMM-RTSP2WebRTC", {
     );
 
     this.generateUi();
-    for (const key of Object.keys(this.sources)) {
-      this.showPlayer(key);
-    }
+
+    setTimeout(() => {
+      for (const key of Object.keys(this.sources)) {
+        this.showPlayer(key);
+      }
+    }, 100);
     this.log("Started");
   },
 
@@ -158,7 +156,8 @@ Module.register("MMM-RTSP2WebRTC", {
       `player-${this.name}`,
       `player-${key}`
     );
-    videoWrapper.mode = this.playMode;
+    videoWrapper.id = this.sources[key].id;
+    videoWrapper.mode = "webrtc";
     videoWrapper.style.width = `${this.config.width}px`;
     videoWrapper.style.height = `${this.config.height}px`;
 
@@ -263,7 +262,7 @@ Module.register("MMM-RTSP2WebRTC", {
     this.wrapper
       .querySelectorAll(`.player-${key}`)
       .forEach((videoEl) => this.wrapper.removeChild(videoEl));
-    this.sources[key].videoEl = this.getVideoElement(key);
+    this.sources[key].videoEl = null;
   },
 
   resetPlayer(key) {
@@ -272,18 +271,20 @@ Module.register("MMM-RTSP2WebRTC", {
   },
 
   showPlayer(key) {
-    if (
-      this.sources[key].videoEl !== null &&
-      this.sources[key].videoEl.offsetParent !== null
-    )
-      return;
-    this.info(
-      `Creating player: ${this.sources[key].name} → ${this.sources[key].endpoint}`
-    );
+    if (!this.sources[key].videoEl) {
+      this.info(
+        `Creating player: ${this.sources[key].name} → ${this.sources[key].endpoint}`
+      );
+      this.sources[key].videoEl = this.getVideoElement(key);
+      this.sources[key].videoEl.src = this.sources[key].endpoint;
+    }
+
+    if (this.sources[key].videoEl.offsetParent !== null) return;
+
     const shownMessage = this.wrapper.querySelector(
       `.message-container-${key}`
     );
-    this.sources[key].videoEl.src = this.sources[key].endpoint;
+
     // Keep the placement of the player equals to config
     if (shownMessage !== null) {
       this.wrapper.insertBefore(
@@ -335,7 +336,7 @@ Module.register("MMM-RTSP2WebRTC", {
 
   // Load scripts
   getScripts() {
-    return [this.file("js/video-rtc.js"), this.file("js/webOSTV.js")];
+    return [this.file("js/video-rtc.js")];
   },
 
   // Load stylesheets
