@@ -23,7 +23,7 @@ Module.register("MMM-RTSP2WebRTC", {
     animationSpeed: 0,
     liveTolerance: 3,
     host: "localhost",
-    port: 5000,
+    port: 1984,
     sources: []
   },
   name: "MMM-RTSP2WebRTC",
@@ -87,7 +87,7 @@ Module.register("MMM-RTSP2WebRTC", {
       });
 
     this.sources = this.config.sources.reduce((acc, { id, name, key }) => {
-      const endpoint = `ws://${this.config.host}:${this.config.port}/live/webrtc/api/ws?src=${key}`;
+      const endpoint = `ws://${this.config.host}:${this.config.port}/api/ws?src=${key}`;
       acc[key] = {
         id,
         key,
