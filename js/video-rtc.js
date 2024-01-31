@@ -37,12 +37,6 @@ class VideoRTC extends HTMLElement {
     this.mode = "webrtc,mse,mp4,mjpeg";
 
     /**
-     * [config] Run stream when not displayed on the screen. Default `false`.
-     * @type {boolean}
-     */
-    this.background = false;
-
-    /**
      * [config] Run stream only when player in the viewport. Stop when user scroll out player.
      * Value is percentage of visibility from `0` (not visible) to `1` (full visible).
      * Default `0` - disable;
@@ -84,6 +78,11 @@ class VideoRTC extends HTMLElement {
     this.video = null;
 
     /**
+     * @type {HTMLDivElement}
+     */
+    this.overlay = null;
+
+    /**
      * @type {WebSocket}
      */
     this.ws = null;
@@ -102,11 +101,6 @@ class VideoRTC extends HTMLElement {
      * @type {number}
      */
     this.connectTS = 0;
-
-    /**
-     * @type {string}
-     */
-    this.mseCodecs = "";
 
     /**
      * [internal] Disconnect TimeoutID.
@@ -190,13 +184,14 @@ class VideoRTC extends HTMLElement {
     }
 
     // because video autopause on disconnected from DOM
-    if (this.video) {
+    if (this.video && this.overlay) {
       const seek = this.video.seekable;
       if (seek.length > 0) {
         this.video.currentTime = seek.end(seek.length - 1);
       }
       this.play();
     } else {
+      if (this.overlay) this.overlay.style.display = "block";
       this.oninit();
     }
 
@@ -208,18 +203,20 @@ class VideoRTC extends HTMLElement {
    * document's DOM.
    */
   disconnectedCallback() {
-    if (this.background || this.disconnectTID) return;
+    if (this.overlay) this.overlay.style.display = "block";
+    if (this.disconnectTID) return;
     if (this.wsState === WebSocket.CLOSED && this.pcState === WebSocket.CLOSED)
       return;
+
 
     this.disconnectTID = setTimeout(() => {
       if (this.reconnectTID) {
         clearTimeout(this.reconnectTID);
         this.reconnectTID = 0;
       }
-
+      
       this.disconnectTID = 0;
-
+      
       this.ondisconnect();
     }, this.DISCONNECT_TIMEOUT);
   }
@@ -228,21 +225,25 @@ class VideoRTC extends HTMLElement {
    * Creates child DOM elements. Called automatically once on `connectedCallback`.
    */
   oninit() {
-    this.video = document.createElement("video");
-    this.video.controls = false;
-    this.video.playsInline = true;
-    this.video.preload = "auto";
-    this.video.crossorigin = true;
-    this.video.playsinline = true;
-    this.video.autoplay = true;
+    if (!this.video){
+      this.video = document.createElement("video");
+      this.video.classList.add("video-stream-player");
+      this.video.controls = false;
+      this.video.playsInline = true;
+      this.video.preload = "auto";
+      this.video.crossorigin = true;
+      this.video.playsinline = true;
+      this.video.autoplay = true;
+      this.appendChild(this.video);
+    }
 
-    this.video.style.display = "block"; // fix bottom margin 4px
-    this.video.style.width = "100%";
-    this.video.style.height = "100%";
-
-    this.appendChild(this.video);
-
-    if (this.background) return;
+    if (!this.overlay) {
+      this.overlay = document.createElement("div");
+      this.overlay.classList.add("video-stream-overlay");
+      this.overlay.style.height = this.offsetHeight + "px";
+      this.overlay.style.width = this.offsetWidth + "px";
+      this.appendChild(this.overlay);
+    }
 
     if ("hidden" in document && this.visibilityCheck) {
       document.addEventListener("visibilitychange", () => {
@@ -277,6 +278,7 @@ class VideoRTC extends HTMLElement {
    */
   onconnect() {
     if (!this.isConnected || !this.wsURL || this.ws || this.pc) return false;
+    this.overlay.style.display = "block";
 
     // CLOSED or CONNECTING => CONNECTING
     this.wsState = WebSocket.CONNECTING;
@@ -289,7 +291,9 @@ class VideoRTC extends HTMLElement {
       this.ws.addEventListener("open", (ev) => this.onopen(ev));
       this.ws.addEventListener("close", (ev) => this.onclose(ev));
       return true;
-    } catch (e) {}
+    } catch (e) {
+      this.overlay.style.display = "block";
+    }
 
     this.disconnectedCallback();
     return false;
@@ -307,11 +311,10 @@ class VideoRTC extends HTMLElement {
       this.pc.close();
       this.pc = null;
     }
+
+    this.overlay.style.display = "block";
   }
 
-  /**
-   * @returns {Array.<string>} of modes (mse, webrtc, etc.)
-   */
   onopen() {
     // CONNECTING => OPEN
     this.wsState = WebSocket.OPEN;
@@ -329,37 +332,7 @@ class VideoRTC extends HTMLElement {
 
     this.ondata = null;
     this.onmessage = {};
-
-    const modes = [];
-
-    if (this.mode.indexOf("mse") >= 0 && "MediaSource" in window) {
-      // iPhone
-      modes.push("mse");
-      this.onmse();
-    } else if (this.mode.indexOf("mp4") >= 0) {
-      modes.push("mp4");
-      this.onmp4();
-    }
-
-    if (this.mode.indexOf("webrtc") >= 0 && "RTCPeerConnection" in window) {
-      // macOS Desktop app
-      modes.push("webrtc");
-      this.onwebrtc();
-    }
-
-    if (this.mode.indexOf("mjpeg") >= 0) {
-      if (modes.length) {
-        this.onmessage["mjpeg"] = (msg) => {
-          if (msg.type !== "error" || msg.value.indexOf(modes[0]) !== 0) return;
-          this.onmjpeg();
-        };
-      } else {
-        modes.push("mjpeg");
-        this.onmjpeg();
-      }
-    }
-
-    return modes;
+    this.onwebrtc();
   }
 
   /**
@@ -386,78 +359,15 @@ class VideoRTC extends HTMLElement {
     return true;
   }
 
-  onmse() {
-    const ms = new MediaSource();
-    ms.addEventListener(
-      "sourceopen",
-      () => {
-        URL.revokeObjectURL(this.video.src);
-        this.send({ type: "mse", value: this.codecs("mse") });
-      },
-      { once: true }
-    );
-
-    this.video.src = URL.createObjectURL(ms);
-    this.video.srcObject = null;
-    this.play();
-
-    this.mseCodecs = "";
-
-    this.onmessage["mse"] = (msg) => {
-      if (msg.type !== "mse") return;
-
-      this.mseCodecs = msg.value;
-
-      const sb = ms.addSourceBuffer(msg.value);
-      sb.mode = "segments"; // segments or sequence
-      sb.addEventListener("updateend", () => {
-        if (sb.updating) return;
-
-        try {
-          if (bufLen > 0) {
-            const data = buf.slice(0, bufLen);
-            bufLen = 0;
-            sb.appendBuffer(data);
-          } else if (sb.buffered && sb.buffered.length) {
-            const end = sb.buffered.end(sb.buffered.length - 1) - 15;
-            const start = sb.buffered.start(0);
-            if (end > start) {
-              sb.remove(start, end);
-              ms.setLiveSeekableRange(end, end + 15);
-            }
-            // console.debug("VideoRTC.buffered", start, end);
-          }
-        } catch (e) {
-          // console.debug(e);
-        }
-      });
-
-      const buf = new Uint8Array(2 * 1024 * 1024);
-      let bufLen = 0;
-
-      this.ondata = (data) => {
-        if (sb.updating || bufLen > 0) {
-          const b = new Uint8Array(data);
-          buf.set(b, bufLen);
-          bufLen += b.byteLength;
-          // console.debug("VideoRTC.buffer", b.byteLength, bufLen);
-        } else {
-          try {
-            sb.appendBuffer(data);
-          } catch (e) {
-            // console.debug(e);
-          }
-        }
-      };
-    };
-  }
-
   onwebrtc() {
     const pc = new RTCPeerConnection(this.pcConfig);
 
     /** @type {HTMLVideoElement} */
     const video2 = document.createElement("video");
-    video2.addEventListener("loadeddata", (ev) => this.onpcvideo(ev), {
+    video2.addEventListener("loadeddata", (ev) => {
+      this.overlay.style.display = "none";
+      this.onpcvideo(ev);
+    }, {
       once: true
     });
 
@@ -488,6 +398,7 @@ class VideoRTC extends HTMLElement {
 
         this.pcState = WebSocket.CLOSED;
         this.pc = null;
+        this.overlay.style.display = "block";
 
         this.onconnect();
       }
@@ -508,6 +419,7 @@ class VideoRTC extends HTMLElement {
           }).catch(() => console.debug);
           break;
         case "error":
+          this.overlay.style.display = "block";
           if (msg.value.indexOf("webrtc/offer") < 0) return;
           pc.close();
       }
@@ -540,76 +452,17 @@ class VideoRTC extends HTMLElement {
     // Firefox doesn't support pc.connectionState
     if (state === "connected" || state === "connecting" || !state) {
       // Video+Audio > Video, H265 > H264, Video > Audio, WebRTC > MSE
-      let rtcPriority = 0,
-        msePriority = 0;
+      this.video.srcObject = video2.srcObject;
+      this.play();
 
-      /** @type {MediaStream} */
-      const ms = video2.srcObject;
-      if (ms.getVideoTracks().length > 0) rtcPriority += 0x220;
-      if (ms.getAudioTracks().length > 0) rtcPriority += 0x102;
+      this.pcState = WebSocket.OPEN;
 
-      if (this.mseCodecs.indexOf("hvc1.") >= 0) msePriority += 0x230;
-      if (this.mseCodecs.indexOf("avc1.") >= 0) msePriority += 0x210;
-      if (this.mseCodecs.indexOf("mp4a.") >= 0) msePriority += 0x101;
-
-      if (rtcPriority >= msePriority) {
-        this.video.srcObject = ms;
-        this.play();
-
-        this.pcState = WebSocket.OPEN;
-
-        this.wsState = WebSocket.CLOSED;
-        this.ws.close();
-        this.ws = null;
-      } else {
-        this.pcState = WebSocket.CLOSED;
-        this.pc.close();
-        this.pc = null;
-      }
+      this.wsState = WebSocket.CLOSED;
+      this.ws.close();
+      this.ws = null;
     }
-
+    
     video2.srcObject = null;
-  }
-
-  onmjpeg() {
-    this.ondata = (data) => {
-      this.video.controls = false;
-      this.video.poster = "data:image/jpeg;base64," + VideoRTC.btoa(data);
-    };
-
-    this.send({ type: "mjpeg" });
-  }
-
-  onmp4() {
-    /** @type {HTMLCanvasElement} **/
-    const canvas = document.createElement("canvas");
-    /** @type {CanvasRenderingContext2D} */
-    let context;
-
-    /** @type {HTMLVideoElement} */
-    const video2 = document.createElement("video");
-    video2.autoplay = true;
-    video2.playsInline = true;
-    video2.muted = true;
-
-    video2.addEventListener("loadeddata", (ev) => {
-      if (!context) {
-        canvas.width = video2.videoWidth;
-        canvas.height = video2.videoHeight;
-        context = canvas.getContext("2d");
-      }
-
-      context.drawImage(video2, 0, 0, canvas.width, canvas.height);
-
-      this.video.controls = false;
-      this.video.poster = canvas.toDataURL("image/jpeg");
-    });
-
-    this.ondata = (data) => {
-      video2.src = "data:video/mp4;base64," + VideoRTC.btoa(data);
-    };
-
-    this.send({ type: "mp4", value: this.codecs("mp4") });
   }
 
   static btoa(buffer) {
