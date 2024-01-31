@@ -18,7 +18,7 @@ class VideoRTC extends HTMLElement {
     super();
 
     this.DISCONNECT_TIMEOUT = 5000;
-    this.RECONNECT_TIMEOUT = 5000;
+    this.RECONNECT_TIMEOUT = 1000;
 
     this.CODECS = [
       "avc1.640029", // H.264 high 4.1 (Chromecast 1st and 2nd Gen)
@@ -34,22 +34,7 @@ class VideoRTC extends HTMLElement {
      * [config] Supported modes (webrtc, mse, mp4, mjpeg).
      * @type {string}
      */
-    this.mode = "webrtc,mse,mp4,mjpeg";
-
-    /**
-     * [config] Run stream only when player in the viewport. Stop when user scroll out player.
-     * Value is percentage of visibility from `0` (not visible) to `1` (full visible).
-     * Default `0` - disable;
-     * @type {number}
-     */
-    this.visibilityThreshold = 0;
-
-    /**
-     * [config] Run stream only when browser page on the screen. Stop when user change browser
-     * tab or minimise browser windows.
-     * @type {boolean}
-     */
-    this.visibilityCheck = true;
+    this.mode = "webrtc";
 
     /**
      * [config] WebRTC configuration
@@ -83,7 +68,7 @@ class VideoRTC extends HTMLElement {
     this.overlay = null;
 
     /**
-     * @type {WebSocket}
+     * @type {WebSocket|SockJS}
      */
     this.ws = null;
 
@@ -208,15 +193,14 @@ class VideoRTC extends HTMLElement {
     if (this.wsState === WebSocket.CLOSED && this.pcState === WebSocket.CLOSED)
       return;
 
-
     this.disconnectTID = setTimeout(() => {
       if (this.reconnectTID) {
         clearTimeout(this.reconnectTID);
         this.reconnectTID = 0;
       }
-      
+
       this.disconnectTID = 0;
-      
+
       this.ondisconnect();
     }, this.DISCONNECT_TIMEOUT);
   }
@@ -225,7 +209,7 @@ class VideoRTC extends HTMLElement {
    * Creates child DOM elements. Called automatically once on `connectedCallback`.
    */
   oninit() {
-    if (!this.video){
+    if (!this.video) {
       this.video = document.createElement("video");
       this.video.classList.add("video-stream-player");
       this.video.controls = false;
@@ -245,31 +229,7 @@ class VideoRTC extends HTMLElement {
       this.appendChild(this.overlay);
     }
 
-    if ("hidden" in document && this.visibilityCheck) {
-      document.addEventListener("visibilitychange", () => {
-        if (document.hidden) {
-          this.disconnectedCallback();
-        } else if (this.isConnected) {
-          this.connectedCallback();
-        }
-      });
-    }
-
-    if ("IntersectionObserver" in window && this.visibilityThreshold) {
-      const observer = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry) => {
-            if (!entry.isIntersecting) {
-              this.disconnectedCallback();
-            } else if (this.isConnected) {
-              this.connectedCallback();
-            }
-          });
-        },
-        { threshold: this.visibilityThreshold }
-      );
-      observer.observe(this);
-    }
+    this.connectedCallback();
   }
 
   /**
@@ -278,11 +238,10 @@ class VideoRTC extends HTMLElement {
    */
   onconnect() {
     if (!this.isConnected || !this.wsURL || this.ws || this.pc) return false;
-    this.overlay.style.display = "block";
+    if (this.overlay) this.overlay.style.display = "block";
 
     // CLOSED or CONNECTING => CONNECTING
     this.wsState = WebSocket.CONNECTING;
-
     this.connectTS = Date.now();
 
     try {
@@ -290,12 +249,13 @@ class VideoRTC extends HTMLElement {
       this.ws.binaryType = "arraybuffer";
       this.ws.addEventListener("open", (ev) => this.onopen(ev));
       this.ws.addEventListener("close", (ev) => this.onclose(ev));
+      this.ws.addEventListener("error", (ev) => this.onclose(ev));
       return true;
-    } catch (e) {
-      this.overlay.style.display = "block";
-    }
+    } catch (e) {}
 
-    this.disconnectedCallback();
+    this.overlay.style.display = "block";
+    this.onclose();
+    this.ondisconnect();
     return false;
   }
 
@@ -345,16 +305,13 @@ class VideoRTC extends HTMLElement {
     this.wsState = WebSocket.CONNECTING;
     this.ws = null;
 
-    // reconnect no more than once every X seconds
-    const delay = Math.max(
-      this.RECONNECT_TIMEOUT - (Date.now() - this.connectTS),
-      0
-    );
-
-    this.reconnectTID = setTimeout(() => {
+    const _reconnect = () => {
+      clearTimeout(this.reconnectTID);
       this.reconnectTID = 0;
       this.onconnect();
-    }, delay);
+    };
+
+    this.reconnectTID = setTimeout(_reconnect, this.RECONNECT_TIMEOUT);
 
     return true;
   }
@@ -364,12 +321,16 @@ class VideoRTC extends HTMLElement {
 
     /** @type {HTMLVideoElement} */
     const video2 = document.createElement("video");
-    video2.addEventListener("loadeddata", (ev) => {
-      this.overlay.style.display = "none";
-      this.onpcvideo(ev);
-    }, {
-      once: true
-    });
+    video2.addEventListener(
+      "loadeddata",
+      (ev) => {
+        this.overlay.style.display = "none";
+        this.onpcvideo(ev);
+      },
+      {
+        once: true
+      }
+    );
 
     pc.addEventListener("icecandidate", (ev) => {
       const candidate = ev.candidate ? ev.candidate.toJSON().candidate : "";
@@ -458,10 +419,12 @@ class VideoRTC extends HTMLElement {
       this.pcState = WebSocket.OPEN;
 
       this.wsState = WebSocket.CLOSED;
-      this.ws.close();
-      this.ws = null;
+      if (this.ws) {
+        this.ws.close();
+        this.ws = null;
+      }
     }
-    
+
     video2.srcObject = null;
   }
 
