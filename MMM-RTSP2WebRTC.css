@@ -31,7 +31,6 @@
 
 .MMM-RTSP2WebRTC .wrapper > .player {
   padding-top: 0 !important;
-  opacity: 0.9;
 }
 
 video-stream {
