@@ -452,14 +452,48 @@ class VideoRTC extends HTMLElement {
     };
   }
 
+  _delayedrestart(pc) {
+    pc.close(); // stop next events
+    this.pcState = WebSocket.CLOSED;
+    this.pc = null;
+    this.ondisconnect();
+    setTimeout(() => this.onconnect(), 1);
+  }
+
   onwebrtc() {
     const pc = new RTCPeerConnection(this.pcConfig);
 
     /** @type {HTMLVideoElement} */
     const video2 = document.createElement("video");
-    video2.addEventListener("loadeddata", (ev) => this.onpcvideo(ev), {
-      once: true
-    });
+
+    video2.addEventListener(
+      "loadeddata",
+      (ev) => {
+        loaded = true;
+        return this.onpcvideo(ev);
+      },
+      {
+        once: true
+      }
+    );
+
+    let loaded = false;
+    let lastUpdated = new Date().valueOf();
+    let timeoutCheck = setTimeout(() => {
+      if (!loaded) this._delayedrestart(pc);
+      clearTimeout(timeoutCheck);
+    }, this.DISCONNECT_TIMEOUT);
+
+    const _tul = () => {
+      if (new Date().valueOf() - lastUpdated > this.DISCONNECT_TIMEOUT) {
+        this.video.removeEventListener("timeupdate", _tul);
+        this._delayedrestart(pc);
+        return;
+      }
+      lastUpdated = new Date().valueOf();
+    };
+
+    this.video.addEventListener("timeupdate", _tul);
 
     pc.addEventListener("icecandidate", (ev) => {
       const candidate = ev.candidate ? ev.candidate.toJSON().candidate : "";
@@ -467,29 +501,22 @@ class VideoRTC extends HTMLElement {
     });
 
     pc.addEventListener("track", (ev) => {
-      // when stream already init
-      if (video2.srcObject !== null) return;
-
-      // when audio track not exist in Chrome
-      if (ev.streams.length === 0) return;
-
-      // when audio track not exist in Firefox
-      if (ev.streams[0].id[0] === "{") return;
+      if (
+        // when stream already init
+        video2.srcObject !== null ||
+        // when audio track not exist in Chrome
+        ev.streams.length === 0 ||
+        // when audio track not exist in Firefox
+        ev.streams[0].id[0] === "{"
+      )
+        return;
 
       video2.srcObject = ev.streams[0];
     });
 
-    pc.addEventListener("connectionstatechange", () => {
-      if (
-        pc.connectionState === "failed" ||
-        pc.connectionState === "disconnected"
-      ) {
-        pc.close(); // stop next events
-
-        this.pcState = WebSocket.CLOSED;
-        this.pc = null;
-
-        this.onconnect();
+    pc.addEventListener("connectionstatechange", (ev) => {
+      if (["failed", "disconnected"].includes(pc.connectionState)) {
+        this._delayedrestart(pc);
       }
     });
 
