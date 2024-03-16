@@ -1,6 +1,6 @@
 {
   "name": "MMM-RTSP2WebRTC",
-  "version": "2.5.0",
+  "version": "2.5.1",
   "description": "Proxy sources through go2rtc",
   "main": "MMM-RTSP2WebRTC.js",
   "author": "Andrés Vanegas <ukab72106@gmail.com>",
