@@ -24,6 +24,7 @@ Module.register("MMM-RTSP2WebRTC", {
     liveTolerance: 3,
     host: "localhost",
     port: 1984,
+    mode: "mse",
     sources: []
   },
   name: "MMM-RTSP2WebRTC",
@@ -41,6 +42,11 @@ Module.register("MMM-RTSP2WebRTC", {
       ...this.defaults,
       ...this.config
     };
+
+    this.config.mode = `${this.config.mode}`.toLowerCase();
+    if (!["mse", "webrtc"].includes(`${this.config.mode}`.toLowerCase())) {
+      this.config.mode = "mse";
+    }
 
     this.sourcesOrder = {};
     this.sources = {};
@@ -157,7 +163,7 @@ Module.register("MMM-RTSP2WebRTC", {
       `player-${key}`
     );
     videoWrapper.id = this.sources[key].id;
-    videoWrapper.mode = "webrtc";
+    videoWrapper.mode = this.config.mode;
     videoWrapper.style.width = `${this.config.width}px`;
     videoWrapper.style.height = `${this.config.height}px`;
 
