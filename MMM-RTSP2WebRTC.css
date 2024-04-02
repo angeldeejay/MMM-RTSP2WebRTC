@@ -47,21 +47,28 @@ video-stream > .video-stream-player {
   z-index: 0;
 }
 
-video-stream > .video-stream-overlay {
-  border-radius: 0.25rem;
-  display: block;
+video-stream > .overlay {
   position: absolute;
   top: 0;
   left: 0;
+  right: 0;
+  bottom: 0;
+  justify-content: center;
+  pointer-events: none;
+  cursor: none;
   z-index: +1;
-  background: black;
+  display: flex;
+  opacity: 0;
+  border-radius: 0.25rem;
+  transition: opacity 0.5s linear;
+  background-color: black;
 }
 
-video-stream > .video-stream-overlay::after {
+video-stream > .overlay::after {
   content: "";
   display: block;
   position: absolute;
-  background-image: url("assets/no-video.svg");
+  background-image: url("data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iaXNvLTg4NTktMSI/Pg0KPCEtLSBVcGxvYWRlZCB0bzogU1ZHIFJlcG8sIHd3dy5zdmdyZXBvLmNvbSwgR2VuZXJhdG9yOiBTVkcgUmVwbyBNaXhlciBUb29scyAtLT4NCjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+DQo8c3ZnIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC41MTQpIiBoZWlnaHQ9IjgwMHB4IiB3aWR0aD0iODAwcHgiIHZlcnNpb249IjEuMSIgaWQ9IkNhcGFfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgDQoJIHZpZXdCb3g9IjAgMCA1MjAgNTIwIiB4bWw6c3BhY2U9InByZXNlcnZlIj4NCjxnPg0KCTxwYXRoIGQ9Ik01MDUuMjksMTU3LjYyMmMtOS4wMDUtNS41NjgtMjAuNTg1LTYuMDc1LTMwLjAzNy0xLjM0MkwzOTcsMTk1LjI0NHYtNDIuMTg1YzAtMTYuODYyLTEzLjI1Ni0zMC4xMzYtMzAuMTE4LTMwLjEzNg0KCQlIMTgzLjczNGwtNjguMzY1LTgwLjk5Yy0xMC44ODMtMTIuODY2LTMwLjEzMS0xNC41OTEtNDMuMDI3LTMuNjg1QzU5LjQ3Niw0OS4xNCw1Ny44NjYsNjguMzYsNjguNzY0LDgxLjIzM2wzMzUuODY3LDM5Ni45MDkNCgkJYzYuMDM4LDcuMTM0LDE0LjY0MSwxMC43OTcsMjMuMzE4LDEwLjc5N2M2Ljk2MiwwLDEzLjk3LTIuMzc3LDE5LjcxLTcuMjNjMTIuODY2LTEwLjg5MSwxNC4yNzYtMzAuMTY0LDMuMzc4LTQzLjAzOEwzOTcsMzc1LjA0NQ0KCQl2LTE5LjkwM2w3OC4xMzYsMzguOTY0YzQuMzA5LDIuMTU0LDkuMDk4LDMuMjIsMTMuNzY0LDMuMjJjNS41NzYsMCwxMS40MzUtMS41MjgsMTYuMzQtNC41NjINCgkJYzguOTktNS41NjEsMTQuNzYtMTUuMzg2LDE0Ljc2LTI1Ljk3MXYtMTgzLjJDNTIwLDE3My4wMDcsNTE0LjI4LDE2My4xODMsNTA1LjI5LDE1Ny42MjJ6Ii8+DQoJPHBhdGggZD0iTTAsMTUzLjA1OXYyNDQuMjY3YzAsMTYuODYyLDE0LjEzOCwzMC41OTcsMzEsMzAuNTk3aDI2MC43NTZMMjkuODc5LDEyMi42NDdDMTMuNDQzLDEyMy4xMjgsMCwxMzYuNDk5LDAsMTUzLjA1OXoiLz4NCjwvZz4NCjwvc3ZnPg==");
   background-position: center;
   background-repeat: no-repeat;
   background-size: contain;
@@ -70,7 +77,7 @@ video-stream > .video-stream-overlay::after {
   width: 40%;
   height: 40%;
   transform: translateY(-50%) translateX(-50%);
-  animation: blink 1s linear infinite;
+  animation: blink 0.5s linear infinite;
 }
 
 @keyframes blink {

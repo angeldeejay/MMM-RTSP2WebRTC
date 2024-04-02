@@ -7,6 +7,7 @@
  * By Andrés Vanegas <ukab72106@gmail.com>
  * MIT Licensed.
  */
+
 Module.register("MMM-RTSP2WebRTC", {
   /**
    * @member {Object} defaults - Defines the default config values.
@@ -342,7 +343,7 @@ Module.register("MMM-RTSP2WebRTC", {
 
   // Load scripts
   getScripts() {
-    return [this.file("js/video-rtc.js")];
+    return [this.file("js/video-rtc.js"), this.file("js/video-stream.js")];
   },
 
   // Load stylesheets
