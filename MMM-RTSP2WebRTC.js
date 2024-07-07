@@ -76,7 +76,8 @@ Module.register("MMM-RTSP2WebRTC", {
             typeof s === "string"
               ? `${this.translate("VIDEO")} ${i + 1}`
               : s.name ?? `${this.translate("VIDEO")} ${i + 1}`,
-          key: typeof s === "string" ? s : s.key ?? null
+          key: typeof s === "string" ? s : s.key ?? null,
+          frigate: typeof s === "string" ? false : s.frigate ?? false
         };
       })
       .filter((s) => {
@@ -93,20 +94,24 @@ Module.register("MMM-RTSP2WebRTC", {
         return { id: i, ...s };
       });
 
-    this.sources = this.config.sources.reduce((acc, { id, name, key }) => {
-      const endpoint = `ws://${this.config.host}:${this.config.port}/api/ws?src=${key}`;
-      acc[key] = {
-        id,
-        key,
-        name,
-        endpoint,
-        intervalId: null,
-        player: null,
-        videoEl: null,
-        messageEl: this.getMessageElement(key)
-      };
-      return acc;
-    }, {});
+    this.sources = this.config.sources.reduce(
+      (acc, { id, name, key, frigate }) => {
+        const frigatePrefix = frigate ? "/live/webrtc" : "";
+        const endpoint = `ws://${this.config.host}:${this.config.port}${frigatePrefix}/api/ws?src=${key}`;
+        acc[key] = {
+          id,
+          key,
+          name,
+          endpoint,
+          intervalId: null,
+          player: null,
+          videoEl: null,
+          messageEl: this.getMessageElement(key)
+        };
+        return acc;
+      },
+      {}
+    );
     this.sourcesOrder = Object.fromEntries(
       Object.entries(this.sources)
         .sort((a, b) => a[1].id - b[1].id)
