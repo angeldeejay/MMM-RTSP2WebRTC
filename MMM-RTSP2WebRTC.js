@@ -182,7 +182,7 @@ Module.register("MMM-RTSP2WebRTC", {
     if (this.wrapper.contains(this.sources[key].messageEl)) {
       this.wrapper.removeChild(this.sources[key].messageEl);
     }
-    delete this.sources[s];
+    delete this.sources[key];
   },
 
   hideMessage(key) {
@@ -334,11 +334,10 @@ Module.register("MMM-RTSP2WebRTC", {
   generateUi: function () {
     const sourcesCount = Object.keys(this.sources).length;
     if (sourcesCount === 0) {
-      this.showMessages(sourcesCount === 0 ? "NO_SOURCES" : "LOADING_VIDEO");
+      this.showMessages("NO_SOURCES");
+      setTimeout(() => this.generateUi(), 1000);
       return;
     }
-
-    setTimeout(() => this.generateUi(), 1000);
   },
 
   // Override function to retrieve DOM elements
