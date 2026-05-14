@@ -26,6 +26,7 @@ Module.register("MMM-RTSP2WebRTC", {
     host: "localhost",
     port: 1984,
     mode: "mse",
+    media: "video",
     sources: []
   },
   name: "MMM-RTSP2WebRTC",
@@ -170,6 +171,7 @@ Module.register("MMM-RTSP2WebRTC", {
     );
     videoWrapper.id = this.sources[key].id;
     videoWrapper.mode = this.config.mode;
+    videoWrapper.media = this.config.media;
     videoWrapper.style.width = `${this.config.width}px`;
     videoWrapper.style.height = `${this.config.height}px`;
 
