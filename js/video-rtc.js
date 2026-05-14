@@ -357,7 +357,10 @@ class VideoRTC extends HTMLElement {
                     }
                     if (this.video.currentTime < start) this.video.currentTime = start;
                     const gap = end - this.video.currentTime;
-                    this.video.playbackRate = gap > 0.1 ? gap : 0.1;
+                    const targetRate = gap > 0.5 ? 1.1 : 1.0;
+                    if (Math.abs(this.video.playbackRate - targetRate) > 0.05) {
+                        this.video.playbackRate = targetRate;
+                    }
                 }
             });
 

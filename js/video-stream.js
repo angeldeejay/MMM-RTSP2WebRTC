@@ -8,11 +8,17 @@ class VideoStream extends VideoRTC {
     }
 
     _showOverlay() {
-        if (this._overlay) this._overlay.style.opacity = '1';
+        if (this._overlay) {
+            this._overlay.style.animationPlayState = 'running';
+            this._overlay.style.opacity = '1';
+        }
     }
 
     _hideOverlay() {
-        if (this._overlay) this._overlay.style.opacity = '0';
+        if (this._overlay) {
+            this._overlay.style.opacity = '0';
+            this._overlay.style.animationPlayState = 'paused';
+        }
     }
 
     oninit() {
